@@ -3,8 +3,12 @@ name: CMake [ ubuntu-latest ]
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - '.github/workflows/**'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - '.github/workflows/**'
 
 env:
   BUILD_TYPE: Release
