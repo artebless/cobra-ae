@@ -7,3 +7,4 @@ add_executable(cobra_ae
         dsp/dsp.c
         dsp/dsp.h
 )
+target_link_libraries(cobra_ae PRIVATE m)
