@@ -18,6 +18,8 @@
             cmake
             ninja
             gcc
+            rustc
+            cargo
             gdb
             pkg-config
             git
