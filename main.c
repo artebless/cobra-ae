@@ -18,10 +18,5 @@ limitations under the License.
 #include "dsp/dsp.h"
 
 int main() {
-
-    const char buffer[DEFAULT_MAX_DISPATCHER_BUFFER_SIZE] = "COUPLE VIBES NO DESC";
-    DISPATCHER_OUT_ disp = dispatcher_(buffer);
-    printf("Str -> %s \n", disp.command);
-    printf("Args count -> %zu\n", disp.args_c);
     return 0;
 }
