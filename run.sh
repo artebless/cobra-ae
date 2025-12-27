@@ -1,3 +1,3 @@
 clear
-cd build
-./cobra_ae
+cd flex
+cargo run
