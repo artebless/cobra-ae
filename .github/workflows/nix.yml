@@ -28,3 +28,6 @@ jobs:
 
     - name: Build
       run: chmod +x build.sh && ./build.sh
+
+    - name: Run
+      run: chmod +x run.sh && ./run.sh
