@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use crate::ffi::ffi::test_all_;
+use crate::ffi::ffi::{test_ring_b_, test_waves_gen_};
 
 mod ffi;
 
 fn main() {
-    test_all_()
+    test_waves_gen_();
+    test_ring_b_();
 }

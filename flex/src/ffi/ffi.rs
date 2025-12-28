@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 use std::ffi::{c_float, c_void};
-use std::ptr::null_mut;
-use libc::{free, pthread_cond_t, pthread_mutex_t};
+use std::ptr::{null, null_mut};
+use libc::{free, pthread_cond_t, pthread_mutex_t, PTHREAD_COND_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
 
 static DEFAULT_RING_BUFFER_SIZE: usize = 2048;
 #[repr(C)]
@@ -42,10 +42,47 @@ unsafe extern "C" {
     fn build_blank_wave_(signal: *mut SIGNAL_, sample_rate: c_float, t: c_float);
     fn build_sin_wave_(signal: *mut SIGNAL_, s_amplitude: c_float, s_phase: c_float,
         s_frequency: c_float, s_sample_rate: c_float, t: c_float);
+    fn init_ring_b_(ring_b: *mut SIGNAL_RING_B_) -> usize;
+    fn charge_ring_b_(ring_b: *mut SIGNAL_RING_B_, samples_ptr: *mut SIGNAL_) -> usize;
+    fn read_ring_b_(ring_b: *mut SIGNAL_RING_B_, samples_ptr: *mut SIGNAL_) -> usize;
+    fn destroy_ring_b_(ring_b: *mut SIGNAL_RING_B_) -> usize;
+}
+
+pub fn test_ring_b_() {
+    unsafe {
+        let mut signal = SIGNAL_ {
+            ptr: null_mut(),
+            signal_size: 0,
+            flag: false
+        };
+
+        build_sin_wave_(&mut signal as *mut SIGNAL_, 1.0, 0.0, 770.0, 44110.0, 15.0);
+
+        let mut buff: [c_float; DEFAULT_RING_BUFFER_SIZE] = [0.0; 2048];
+        let p: pthread_mutex_t = PTHREAD_MUTEX_INITIALIZER;
+        let is_b_e_: pthread_cond_t = PTHREAD_COND_INITIALIZER;
+        let is_b_f_: pthread_cond_t = PTHREAD_COND_INITIALIZER;
+        let mut ring_b = SIGNAL_RING_B_ {
+            b: buff,
+            r_index: 0,
+            w_index: 0,
+            b_mutex: p,
+            is_b_empty: is_b_e_,
+            is_b_full: is_b_f_,
+            flag: 0
+        };
+
+        init_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_);
+        let samples_in: usize = charge_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_, &mut signal as *mut SIGNAL_);
+        let samples_read: usize = read_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_, &mut signal as *mut SIGNAL_);
+        println!("{}", samples_in);
+        println!("{}", samples_read);
+        destroy_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_);
+    }
 }
 
 #[warn(unused_assignments)]
-pub fn test_all_() {
+pub fn test_waves_gen_() {
     unsafe {
         let mut signal = SIGNAL_ {
             ptr: null_mut(),
