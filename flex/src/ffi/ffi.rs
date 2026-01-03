@@ -15,10 +15,18 @@ limitations under the License.
 */
 
 use std::ffi::{c_float, c_void};
-use std::ptr::{null, null_mut};
+use std::ptr::null_mut;
+use std::sync::atomic;
+
+#[allow(unused_imports)]
 use libc::{free, pthread_cond_t, pthread_mutex_t, PTHREAD_COND_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
 
+#[allow(dead_code)]
 static DEFAULT_RING_BUFFER_SIZE: usize = 2048;
+
+#[allow(dead_code)]
+static DEFAULT_BUFFER_SLICES: usize = 4;
+
 #[repr(C)]
 pub struct SIGNAL_ {
     pub ptr: *mut c_float,
@@ -26,15 +34,66 @@ pub struct SIGNAL_ {
     pub flag: bool
 }
 
+// typedef enum
+// {
+//    SLICE_FREE,
+//    SLICE_INUSE_W,
+//    SLICE_VALID,
+//    SLICE_INUSE_R,
+//    SLICE_LISTED
+// } MAIN_STATE_;
+
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
 #[repr(C)]
-pub struct SIGNAL_RING_B_ {
-    pub b: [c_float; DEFAULT_RING_BUFFER_SIZE],
-    pub r_index: usize,
-    pub w_index: usize,
-    pub b_mutex: pthread_mutex_t,
-    pub is_b_empty: pthread_cond_t,
-    pub is_b_full: pthread_cond_t,
-    pub flag: i8,
+pub enum MAIN_STATE_ {
+    SLICE_FREE,
+    SLICE_INUSE_W,
+    SLICE_VALID,
+    SLICE_INUSE_R,
+    SLICE_LISTED
+}
+
+// typedef struct
+// {
+//    float_t left_channel[2048];
+//    float_t right_channel[2048];
+//    size_t fb_size;
+// } __attribute__((aligned(DEFAULT_CACHE_LINE))) SIGNAL_FRAME_;
+
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
+#[repr(C, align(128))]
+pub struct SIGNAL_FRAME_ {
+    pub left_channel: [c_float; 2048],
+    pub right_channel: [c_float; 2048],
+    pub fb_size: usize
+}
+
+// typedef struct
+// {
+//    atomic_int builder_id_uniq_;
+//    atomic_int checker_id_uniq_;
+//    atomic_enum main_state_;
+//    atomic_int processed_;
+// } SLICE_STATE_;
+
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
+#[repr(C)]
+pub struct SLICE_STATE_ {
+    pub build_id_uniq_: atomic::AtomicI32,
+    pub checker_id_uniq: atomic::AtomicI32,
+    pub main_state_: atomic::AtomicI32,
+    pub processed_: atomic::AtomicI32
+}
+
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
+#[repr(C)]
+pub struct SIGNAL_PIPELINE_ {
+    pub signal_frame: *mut SIGNAL_FRAME_,
+    pub slice_state_arr: [SLICE_STATE_; DEFAULT_BUFFER_SLICES]
 }
 
 #[link(name = "cobra_ae", kind = "static")]
@@ -42,43 +101,11 @@ unsafe extern "C" {
     fn build_blank_wave_(signal: *mut SIGNAL_, sample_rate: c_float, t: c_float);
     fn build_sin_wave_(signal: *mut SIGNAL_, s_amplitude: c_float, s_phase: c_float,
         s_frequency: c_float, s_sample_rate: c_float, t: c_float);
-    fn init_ring_b_(ring_b: *mut SIGNAL_RING_B_) -> usize;
-    fn charge_ring_b_(ring_b: *mut SIGNAL_RING_B_, samples_ptr: *mut SIGNAL_) -> usize;
-    fn read_ring_b_(ring_b: *mut SIGNAL_RING_B_, samples_ptr: *mut SIGNAL_) -> usize;
-    fn destroy_ring_b_(ring_b: *mut SIGNAL_RING_B_) -> usize;
-}
-
-pub fn test_ring_b_() {
-    unsafe {
-        let mut signal = SIGNAL_ {
-            ptr: null_mut(),
-            signal_size: 0,
-            flag: false
-        };
-
-        build_sin_wave_(&mut signal as *mut SIGNAL_, 1.0, 0.0, 770.0, 44110.0, 15.0);
-
-        let mut buff: [c_float; DEFAULT_RING_BUFFER_SIZE] = [0.0; 2048];
-        let p: pthread_mutex_t = PTHREAD_MUTEX_INITIALIZER;
-        let is_b_e_: pthread_cond_t = PTHREAD_COND_INITIALIZER;
-        let is_b_f_: pthread_cond_t = PTHREAD_COND_INITIALIZER;
-        let mut ring_b = SIGNAL_RING_B_ {
-            b: buff,
-            r_index: 0,
-            w_index: 0,
-            b_mutex: p,
-            is_b_empty: is_b_e_,
-            is_b_full: is_b_f_,
-            flag: 0
-        };
-
-        init_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_);
-        let samples_in: usize = charge_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_, &mut signal as *mut SIGNAL_);
-        let samples_read: usize = read_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_, &mut signal as *mut SIGNAL_);
-        println!("{}", samples_in);
-        println!("{}", samples_read);
-        destroy_ring_b_(&mut ring_b as *mut SIGNAL_RING_B_);
-    }
+    fn _init_slice_state_builder__(builder_id_uniq_: usize);
+    fn _init_slice_state_checker__(checker_id_uniq_: usize);
+    fn _init_pipeline__(pl_: *mut SIGNAL_PIPELINE_);
+    fn _charge_pipeline__(pl_: *mut SIGNAL_PIPELINE_, signal_: *mut SIGNAL_FRAME_);
+    fn _read_pipeline__(pl_: *mut SIGNAL_PIPELINE_, signal_: *mut SIGNAL_FRAME_);
 }
 
 #[warn(unused_assignments)]

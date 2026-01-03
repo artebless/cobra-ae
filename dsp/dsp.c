@@ -66,7 +66,7 @@ const float_t s_frequency, const float_t s_sample_rate, const float_t t)
     signal->flag = 0;
 }
 
-size_t init_ring_b_(SIGNAL_RING_B_* ring_b)
+ssize_t init_ring_b_(SIGNAL_RING_B_* ring_b)
 {
     if (!ring_b) return -1;
     ring_b->r_index = 0;
@@ -76,7 +76,7 @@ size_t init_ring_b_(SIGNAL_RING_B_* ring_b)
     return 0;
 }
 
-size_t charge_ring_b_(SIGNAL_RING_B_ *ring_b, SIGNAL_ *samples_ptr)
+ssize_t charge_ring_b_(SIGNAL_RING_B_ *ring_b, SIGNAL_ *samples_ptr)
 {
     if (!ring_b || !samples_ptr || !samples_ptr->ptr) return (size_t)-1;
     if (pthread_mutex_lock(&ring_b->b_mutex) != 0) return (size_t)-1;
@@ -94,7 +94,7 @@ size_t charge_ring_b_(SIGNAL_RING_B_ *ring_b, SIGNAL_ *samples_ptr)
     return samples_in;
 }
 
-size_t read_ring_b_(SIGNAL_RING_B_ *ring_b, SIGNAL_ *samples_ptr_out)
+ssize_t read_ring_b_(SIGNAL_RING_B_ *ring_b, SIGNAL_ *samples_ptr_out)
 {
     if (!ring_b || !samples_ptr_out || !samples_ptr_out->ptr) return (size_t)-1;
     if (pthread_mutex_lock(&ring_b->b_mutex) != 0) return (size_t)-1;
@@ -110,7 +110,7 @@ size_t read_ring_b_(SIGNAL_RING_B_ *ring_b, SIGNAL_ *samples_ptr_out)
     return samples_read;
 }
 
-size_t destroy_ring_b_(SIGNAL_RING_B_* ring_b)
+ssize_t destroy_ring_b_(SIGNAL_RING_B_* ring_b)
 {
     if (!ring_b) return -1;
     ring_b->r_index = 0;
@@ -119,3 +119,4 @@ size_t destroy_ring_b_(SIGNAL_RING_B_* ring_b)
     if (pthread_mutex_destroy(&ring_b->b_mutex) != 0) return -2;
     return 0;
 }
+
