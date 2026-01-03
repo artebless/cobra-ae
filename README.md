@@ -7,5 +7,5 @@ Currently under development.
 
 Licensed under the Apache 2.0 license
 
-[![License](https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Apache_HTTP_server_logo_%282019-present%29.svg/120px-Apache_HTTP_server_logo_%282019-present%29.svg.png?20220805205621)](LICENSE)
+[![License](https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Apache_Software_Foundation_Logo_%282016%29.svg/120px-Apache_Software_Foundation_Logo_%282016%29.svg.png?20160227223120)](LICENSE)
 
