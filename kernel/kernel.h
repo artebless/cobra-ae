@@ -31,11 +31,15 @@ limitations under the License.
 #define DEFAULT_MAX_COMMAND_SIZE 64
 #define DEFAULT_MAX_ARG_SIZE 64
 
-typedef struct {
-    pthread_t thread;
-    pthread_attr_t attr;
-    size_t pool_id;
-} THREAD_;
+typedef void (*function_)(void);
+
+// typedef struct {
+//    pthread_t thread;
+//    pthread_attr_t attr;
+//    size_t pool_id;
+// } THREAD_;
+
+// Not necessary.
 
 typedef struct
 {
@@ -44,8 +48,7 @@ typedef struct
     size_t args_c;
 } DISPATCHER_OUT_;
 
-THREAD_ thread_init_(void *func_ptr, const size_t poolin_id);
-void thread_cancel_(const THREAD_ thread);
 DISPATCHER_OUT_ dispatcher_(const char buffer[DEFAULT_MAX_DISPATCHER_BUFFER_SIZE]);
-
+void *_trmp__(void *func_ptr);
+pthread_t _spawn_thread__(function_ f);
 #endif //KERNEL_H

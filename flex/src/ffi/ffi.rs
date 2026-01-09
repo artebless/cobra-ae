@@ -17,9 +17,12 @@ limitations under the License.
 use std::ffi::{c_float, c_void};
 use std::ptr::null_mut;
 use std::sync::atomic;
+use std::{mem, ptr, thread};
+use std::time::Duration;
 
 #[allow(unused_imports)]
 use libc::{free, pthread_cond_t, pthread_mutex_t, PTHREAD_COND_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
+use libc::{pthread_attr_t, pthread_t, size_t, ssize_t};
 
 #[allow(dead_code)]
 static DEFAULT_PIPELINE_SIZE: usize = 2048;
@@ -100,33 +103,44 @@ pub struct SIGNAL_PIPELINE_ {
     pub slice_state_arr: [SLICE_STATE_; DEFAULT_PIPELINE_SLICES]
 }
 
-#[link(name = "cobra_ae", kind = "static")]
 unsafe extern "C" {
-    fn build_blank_wave_(signal: *mut SIGNAL_, sample_rate: c_float, t: c_float, stereo: bool);
-    fn build_sin_wave_(signal: *mut SIGNAL_, s_amplitude: c_float, s_phase: c_float,
+    fn _build_blank_wave__(signal: *mut SIGNAL_, sample_rate: c_float, t: c_float, stereo: bool);
+    fn _build_sin_wave__(signal: *mut SIGNAL_, s_amplitude: c_float, s_phase: c_float,
         s_frequency: c_float, s_sample_rate: c_float, t: c_float, stereo: bool);
-    fn _init_slice_state_builder__(builder_id_uniq_: usize);
-    fn _init_slice_state_checker__(checker_id_uniq_: usize);
-    fn _init_pipeline__(pl_: *mut SIGNAL_PIPELINE_);
-    fn _charge_pipeline__(pl_: *mut SIGNAL_PIPELINE_, signal_: *mut SIGNAL_FRAME_);
-    fn _read_pipeline__(pl_: *mut SIGNAL_PIPELINE_, signal_: *mut SIGNAL_FRAME_);
+    fn _init_slice_state_builder__(builder_id_uniq_: usize) -> SLICE_STATE_; // Fix, due to function returning SLICE_STATE_
+    fn _init_slice_state_checker__(checker_id_uniq_: usize) -> SLICE_STATE_; // Fix, due to function returning SLICE_STATE_
+    fn _charge_pipeline__(pl_: *mut SIGNAL_PIPELINE_, signal_: *mut SIGNAL_FRAME_) -> *mut c_void;
+    fn _read_pipeline__(pl_: *mut SIGNAL_PIPELINE_, signal_: *mut SIGNAL_FRAME_) -> *mut c_void;
+    
+    // fn thread_init_() and thread_cancel_() was fully removed from kernel.c
 }
 
-// #[allow(dead_code)]
-// #[allow(unused_unsafe)]
-// #[allow(unused_variables)]
-// pub fn test_pipeline_() {
-//    unsafe {
-//        let left_channel: [c_float; DEFAULT_PIPELINE_SIZE] = [0.111; DEFAULT_PIPELINE_SIZE];
-//        let right_channel: [c_float; DEFAULT_PIPELINE_SIZE] = [0.222; DEFAULT_PIPELINE_SIZE];
-//        let fb_size = DEFAULT_PIPELINE_SIZE;
-//        let frame = SIGNAL_FRAME_ {
-//            left_channel,
-//            right_channel,
-//            fb_size
-//        };
-//    }
-// }
+#[allow(dead_code)]
+#[allow(unused_unsafe)]
+#[allow(unused_variables)]
+pub fn test_pipeline_() {
+    unsafe {
+        let mut num_one: SLICE_STATE_ = _init_slice_state_builder__(1);
+        let mut num_two: SLICE_STATE_ = _init_slice_state_builder__(2);
+        let mut num_three: SLICE_STATE_ = _init_slice_state_builder__(3);
+        let mut num_four: SLICE_STATE_ = _init_slice_state_checker__(4);
+        let mut left_channel: [c_float; DEFAULT_PIPELINE_SIZE] = [0.111; DEFAULT_PIPELINE_SIZE];
+        let mut right_channel: [c_float; DEFAULT_PIPELINE_SIZE] = [0.222; DEFAULT_PIPELINE_SIZE];
+        let mut fb_size = DEFAULT_PIPELINE_SIZE;
+        let mut slice_state_arr: [SLICE_STATE_; DEFAULT_PIPELINE_SLICES] = [num_one, num_two, num_three, num_four];
+
+        let mut frame = SIGNAL_FRAME_ {
+            left_channel,
+            right_channel,
+            fb_size
+        };
+
+        let mut pipeline = SIGNAL_PIPELINE_ {
+            signal_frame: &mut frame,
+            slice_state_arr: slice_state_arr
+        };
+    }
+}
 
 #[warn(unused_assignments)]
 pub fn test_waves_gen_() {
@@ -137,7 +151,7 @@ pub fn test_waves_gen_() {
             flag: false
         };
 
-        build_blank_wave_(&mut signal as *mut SIGNAL_, 44110.0, 2.0, true);
+        _build_blank_wave__(&mut signal as *mut SIGNAL_, 44110.0, 2.0, true);
 
         if !signal.ptr.is_null() && signal.signal_size > 0 {
             let first_var: c_float = *signal.ptr;
@@ -156,7 +170,7 @@ pub fn test_waves_gen_() {
             flag: false
         };
 
-        build_sin_wave_(&mut signal_two as *mut SIGNAL_, 1.0, 0.0, 440.0, 44110.0, 10.0, true);
+        _build_sin_wave__(&mut signal_two as *mut SIGNAL_, 1.0, 0.0, 440.0, 44110.0, 10.0, true);
 
         if !signal_two.ptr.is_null() && signal_two.signal_size > 0 {
             let slice: &[c_float] = std::slice::from_raw_parts(signal_two.ptr, signal_two.signal_size);

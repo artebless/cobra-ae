@@ -16,44 +16,18 @@ limitations under the License.
 
 #include "kernel.h"
 
-const size_t DEFAULT_THREAD_POOL_SIZE = 8;
-
-static pthread_mutex_t kernel_mutex = PTHREAD_MUTEX_INITIALIZER;
-volatile int16_t thread_n = 0;
-
-THREAD_ thread_init_(void *func_ptr, const size_t poolin_id)
+void *_trmp__(void *func_ptr_)
 {
-    pthread_t thread;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_create(&thread, &attr, func_ptr, NULL);
-    const THREAD_ build = {
-        thread,
-        attr,
-        poolin_id
-    };
-    pthread_mutex_lock(&kernel_mutex);
-    thread_n += 1;
-    printf("%i / ID - %lu \n", thread_n, poolin_id);
-    pthread_mutex_unlock(&kernel_mutex);
-    return build;
+    function_ f = (function_)func_ptr_;
+    f();
+    return NULL;
 }
 
-void thread_cancel_(const THREAD_ thread)
+pthread_t _spawn_thread__(function_ f)
 {
-    const size_t thread_cancel = pthread_cancel(thread.thread);
-    if (thread_cancel != 0)
-    {
-        perror("Panic!");
-    }
-    else
-    {
-        pthread_cancel(thread.thread);
-        pthread_mutex_lock(&kernel_mutex);
-        thread_n -= 1;
-        printf("%i \n", thread_n);
-        pthread_mutex_unlock(&kernel_mutex);
-    }
+    pthread_t thread;
+    pthread_create(&thread, NULL, _trmp__, (void*)f);
+    return thread;
 }
 
 DISPATCHER_OUT_ dispatcher_(const char buffer[DEFAULT_MAX_DISPATCHER_BUFFER_SIZE])
@@ -103,12 +77,4 @@ DISPATCHER_OUT_ dispatcher_(const char buffer[DEFAULT_MAX_DISPATCHER_BUFFER_SIZE
     printf("Command -> %s \n", current_command);
 
     return out;
-}
-
-void thread_pool_(size_t size)
-{
-    if (size == 0)
-    {
-        size = DEFAULT_THREAD_POOL_SIZE;
-    }
 }

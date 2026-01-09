@@ -38,17 +38,7 @@ SLICE_STATE_ _init_slice_state_checker__(size_t checker_id_uniq_)
     return uniq_checker;
 }
 
-ssize_t _init_pipeline__(SIGNAL_PIPELINE_* pl_)
-{
-    return 0;
-}
-
-/*
- * Ima trying to make the pipeline here, but right now it isn't working
- * cuz I didn't make a write / read algorithm, but rn the base is almost ready.
- */
-
-ssize_t _charge_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_)
+void *_charge_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_)
 {
     size_t buffer_size = pl_->frame->fb_size;
     size_t max_try = 4;
@@ -58,28 +48,33 @@ ssize_t _charge_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_)
         for (size_t i = 0; i < max_try; i++)
         {
             MAIN_STATE_ maybe = atomic_load_explicit(&pl_->slice_state_arr[t].main_state_, memory_order_acquire);
-            if (maybe != SLICE_FREE && maybe != SLICE_VALID)
+            if (maybe != SLICE_FREE && maybe != SLICE_LISTED)
             {
                 // Nothing to do, try to lock again...
+                // If i == max_try -> try to lock another slice.
             } else {
                 if (atomic_compare_exchange_strong_explicit(&pl_->slice_state_arr[t].main_state_, &maybe, SLICE_INUSE_W, memory_order_acquire, memory_order_relaxed))
                 {
+                    size_t need_to_write = DEFAULT_PIPELINE_SIZE / DEFAULT_PIPELINE_SLICES;
+                    size_t slice_in = need_to_write * t;
+                    size_t slice_end = slice_in + need_to_write;
                     size_t written;
-                    for (written = 0; written < buffer_size; written++)
+                    for (written = slice_in; written < slice_end; written++)
                     {
-                        printf("Locked -> %i \n", t);
+                        pl_->frame->left_channel[written] = signal_->left_channel[written];
+                        pl_->frame->right_channel[written] = signal_->right_channel[written];
+                        atomic_fetch_add_explicit(&pl_->slice_state_arr[t].processed_, 1, memory_order_release);
                     }
-                    atomic_store_explicit(&pl_->slice_state_arr[t].main_state_, SLICE_LISTED, memory_order_release);
-                    return written;
+                    atomic_store_explicit(&pl_->slice_state_arr[t].main_state_, SLICE_VALID, memory_order_release);
+                    return NULL;
                 }
             }
-
         }
     }
-    return 0;
+    return NULL;
 };
 
-ssize_t _read_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_)
+void *_read_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_)
 {
     size_t buffer_size = pl_->frame->fb_size;
     size_t max_try = 4;
@@ -89,24 +84,27 @@ ssize_t _read_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_)
         for (size_t i = 0; i < max_try; i++)
         {
             MAIN_STATE_ maybe = atomic_load_explicit(&pl_->slice_state_arr[t].main_state_, memory_order_acquire);
-            if (maybe != SLICE_LISTED)
+            if (maybe != SLICE_VALID)
             {
-                // Read comment in line [ 58 ]
+                // Read comment in line [ 58 and 59 ]
             } else {
                 if (atomic_compare_exchange_strong_explicit(&pl_->slice_state_arr[t].main_state_, &maybe, SLICE_INUSE_R, memory_order_acquire, memory_order_relaxed))
                 {
+                    size_t need_to_read = DEFAULT_PIPELINE_SIZE / DEFAULT_PIPELINE_SLICES;
+                    size_t slice_in = need_to_read * t;
+                    size_t slice_end = slice_in + need_to_read;
                     size_t read;
-                    for (read = 0; read < buffer_size; read++)
+                    for (read = slice_in; read < slice_end; read++)
                     {
-                        printf("Locked -> %i \n", t);
-                        // Read logic here, I'll make it soon.
+                        signal_->left_channel[read] = pl_->frame->left_channel[read];
+                        signal_->right_channel[read] = pl_->frame->right_channel[read];
+                        atomic_fetch_add_explicit(&pl_->slice_state_arr[t].processed_, 1, memory_order_release);
                     }
                     atomic_store_explicit(&pl_->slice_state_arr[t].main_state_, SLICE_LISTED, memory_order_release);
-                    return read;
+                    return NULL;
                 }
             }
         }
     }
-    return 0;
+    return NULL;
 }
-

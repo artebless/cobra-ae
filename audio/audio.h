@@ -63,8 +63,7 @@ typedef struct
 
 SLICE_STATE_ _init_slice_state_builder__(size_t builder_id_uniq_);
 SLICE_STATE_ _init_slice_state_checker__(size_t checker_id_uniq_);
-ssize_t _init_pipeline__(SIGNAL_PIPELINE_* pl_);
-ssize_t _charge_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_);
-ssize_t _read_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_);
+void *_charge_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_);
+void *_read_pipeline__(SIGNAL_PIPELINE_* pl_, SIGNAL_FRAME_* signal_);
 
 #endif
