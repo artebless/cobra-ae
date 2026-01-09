@@ -6,5 +6,7 @@ add_library(cobra_ae
         kernel/kernel.h
         dsp/dsp.c
         dsp/dsp.h
+        audio/audio.c
+        audio/audio.h
 )
 target_link_libraries(cobra_ae PRIVATE m)
