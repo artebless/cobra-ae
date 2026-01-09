@@ -16,6 +16,7 @@ limitations under the License.
 
 #include "kernel/kernel.h"
 #include "dsp/dsp.h"
+#include "audio/audio.h"
 
 int main() {
     return 0;
